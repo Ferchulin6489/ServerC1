@@ -1,0 +1,7 @@
+c:\users\kyubolas\documents\visual studio 2017\Projects\ServerC1\ClienteC1\bin\Debug\RakNet.dll
+c:\users\kyubolas\documents\visual studio 2017\Projects\ServerC1\ClienteC1\bin\Debug\ClienteC1.exe
+c:\users\kyubolas\documents\visual studio 2017\Projects\ServerC1\ClienteC1\bin\Debug\ClienteC1.pdb
+c:\users\kyubolas\documents\visual studio 2017\Projects\ServerC1\ClienteC1\bin\Debug\RakNetDotNet.dll
+c:\users\kyubolas\documents\visual studio 2017\Projects\ServerC1\ClienteC1\obj\Debug\ClienteC1.csprojResolveAssemblyReference.cache
+c:\users\kyubolas\documents\visual studio 2017\Projects\ServerC1\ClienteC1\obj\Debug\ClienteC1.exe
+c:\users\kyubolas\documents\visual studio 2017\Projects\ServerC1\ClienteC1\obj\Debug\ClienteC1.pdb
