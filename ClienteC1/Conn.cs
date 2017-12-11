@@ -3,251 +3,129 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using RakNet;
 using System.Diagnostics;
 using System.Threading;
+using System.Net.Sockets;
 
 namespace ClienteC1
 {
     public class Conn
     {
+        public Boolean Logeado = false;
+        public Socket Sock_ = null;
+
         public const short AF_INET = 2;
         public const short AF_INET6 = 23;
+        public String response = String.Empty;
 
-        public RakNetStatistics rss;
-        public RakPeerInterface client;
-
-        private string ip = "127.0.0.1", serverPort = "7666", clientPort = "0";
+        private string ip = "127.0.0.1", serverPort = "7666";
         private Thread Th_Rec;
         private Task d;
         public void Config_Server()
         {
-            rss = new RakNetStatistics();
-            client = RakPeerInterface.GetInstance();
+            Sock_ = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            
+
             Th_Rec = new Thread(new ThreadStart(Th_Receiv));
-
+            Th_Rec.SetApartmentState(ApartmentState.STA);
+            Th_Rec.IsBackground = true;
         }
-
+        public void Add_Consola(String texto)
+        {
+                Console.WriteLine(texto +"\n");
+        }
         private void Th_Receiv()
         {
+            Byte[] bytes = new Byte[1024 * 2];
+            while (this.Sock_.Connected && Logeado)
+            {
+                try
+                {
+                    bytes = new Byte[1024 * 2];
+                    int bytesRec = Sock_.Receive(bytes, SocketFlags.None);
+                    String Resp = Declas.Enco.GetString(bytes, 0, bytesRec);
+                    //MessageBoxEx.Show(Resp);
+                    if (bytesRec > 0)
+                        HandleData.Handle_Data(Resp, bytes);
+                }
+                catch
+                {
 
+                }
+            }
         }
 
         public void Connect()
         {
 
-            Packet p = new Packet();
-            byte packetIdentifier;
-
-            SystemAddress ClientID = RakNet.RakNet.UNASSIGNED_SYSTEM_ADDRESS;
-
-
-            /*Console.WriteLine("Enter the client port to listen on");
-            clientPort = Console.ReadLine();
-            if (clientPort.Length == 0)
-                clientPort = "0";
-
-            Console.WriteLine("Enter the IP to connect to");
-            ip = Console.ReadLine();
-            if (ip.Length == 0)
-                ip = "127.0.0.1";
-
-            Console.WriteLine("Enter the port to connect to");
-            serverPort = Console.ReadLine();
-            if (serverPort.Length == 0)
-                serverPort = "1234";*/
-            d = new Task(() =>
+            if (!State_Connection())
             {
-                SocketDescriptor socketDescriptor = new SocketDescriptor(Convert.ToUInt16(clientPort), "0");
-                socketDescriptor.socketFamily = AF_INET;
-
-                client.Startup(8, socketDescriptor, 1);
-                client.SetOccasionalPing(true);
-
-                ConnectionAttemptResult car = client.Connect(ip, Convert.ToUInt16(serverPort), "Rumpelstiltskin", "Rumpelstiltskin".Length);
-                if (car != RakNet.ConnectionAttemptResult.CONNECTION_ATTEMPT_STARTED)
-                    throw new Exception();
-
-                Console.WriteLine("My IP Addresses:");
-                for (uint i = 0; i < client.GetNumberOfAddresses(); i++)
+                try
                 {
-                    Console.WriteLine(client.GetLocalIP(i).ToString());
+                    Sock_.Connect( ip,Convert.ToInt32(serverPort));
+                    Logeado = true;
+                    Th_Rec.Start();
                 }
-                Console.WriteLine("My GUID is " + client.GetGuidFromSystemAddress(RakNet.RakNet.UNASSIGNED_SYSTEM_ADDRESS).ToString());
-                Console.WriteLine("'quit' to quit. 'stat' to show stats. 'ping' to ping.\n'disconnect' to disconnect. 'connect' to reconnnect. Type to talk.");
-                //string message;
-                while (client.IsActive())
+                catch (Exception e)
                 {
-                    /*System.Threading.Thread.Sleep(30);
-
-                    //Entire networking is threaded
-                    if (Console.KeyAvailable)
-                    {
-                        message = Console.ReadLine();
-                        if (message == "quit")
-                        {
-                            Console.WriteLine("Quitting");
-                            break;
-                        }
-
-                        if (message == "stat")
-                        {
-                            string message2 = "";
-                            rss = client.GetStatistics(client.GetSystemAddressFromIndex(0));
-                            RakNet.RakNet.StatisticsToString(rss, out message2, 2);
-                            Console.WriteLine(message2);
-                            continue;
-                        }
-
-                        if (message == "disconnect")
-                        {
-                            Console.WriteLine("Enter index to disconnect: ");
-                            string str = Console.ReadLine();
-                            if (str == "")
-                                str = "0";
-                            uint index = Convert.ToUInt32(str, 16);
-                            client.CloseConnection(client.GetSystemAddressFromIndex(index), false);
-                            Console.WriteLine("Disconnecting");
-                            continue;
-                        }
-
-                        if (message == "shutdown")
-                        {
-                            client.Shutdown(100);
-                            Console.WriteLine("Disconnecting");
-                            continue;
-                        }
-
-                        if (message == "ping")
-                        {
-                            if (client.GetSystemAddressFromIndex(0) != RakNet.RakNet.UNASSIGNED_SYSTEM_ADDRESS)
-                                client.Ping(client.GetSystemAddressFromIndex(0));
-                            continue;
-                        }
-                        if (message == "connect")
-                        {
-                            Console.WriteLine("Enter the IP to connect to");
-                            ip = Console.ReadLine();
-                            if (ip.Length == 0)
-                                ip = "127.0.0.1";
-
-                            Console.WriteLine("Enter the port to connect to");
-                            serverPort = Console.ReadLine();
-                            if (serverPort.Length == 0)
-                                serverPort = "1234";
-
-                            ConnectionAttemptResult car2 = client.Connect(ip, Convert.ToUInt16(serverPort), "Rumpelstiltskin", "Rumpelstiltskin".Length);
-
-                            continue;
-                        }
-                        if (message == "getlastping")
-                        {
-                            if (client.GetSystemAddressFromIndex(0) != RakNet.RakNet.UNASSIGNED_SYSTEM_ADDRESS)
-                                Console.WriteLine(client.GetLastPing(client.GetSystemAddressFromIndex(0)));
-
-                            continue;
-                        }
-
-                        if (message.Length > 0)
-                            client.Send(message, message.Length + 1, PacketPriority.HIGH_PRIORITY, PacketReliability.RELIABLE_ORDERED, (char)0, RakNet.RakNet.UNASSIGNED_SYSTEM_ADDRESS, true);
-                    }*/
-
-                    for (p = client.Receive(); p != null; client.DeallocatePacket(p), p = client.Receive())
-                    {
-                        packetIdentifier = GetPacketIdentifier(p);
-                        switch ((DefaultMessageIDTypes)packetIdentifier)
-                        {
-                            case DefaultMessageIDTypes.ID_DISCONNECTION_NOTIFICATION:
-                                Console.WriteLine("ID_DISCONNECTION_NOTIFICATION");
-                                break;
-                            case DefaultMessageIDTypes.ID_ALREADY_CONNECTED:
-                                Console.WriteLine("ID_ALREADY_CONNECTED with guid " + p.guid);
-                                break;
-                            case DefaultMessageIDTypes.ID_INCOMPATIBLE_PROTOCOL_VERSION:
-                                Console.WriteLine("ID_INCOMPATIBLE_PROTOCOL_VERSION ");
-                                break;
-                            case DefaultMessageIDTypes.ID_REMOTE_DISCONNECTION_NOTIFICATION:
-                                Console.WriteLine("ID_REMOTE_DISCONNECTION_NOTIFICATION ");
-                                break;
-                            case DefaultMessageIDTypes.ID_REMOTE_CONNECTION_LOST: // Server telling the clients of another client disconnecting forcefully.  You can manually broadcast this in a peer to peer enviroment if you want.
-                                Console.WriteLine("ID_REMOTE_CONNECTION_LOST");
-                                break;
-                            case DefaultMessageIDTypes.ID_CONNECTION_BANNED: // Banned from this server
-                                Console.WriteLine("We are banned from this server.\n");
-                                break;
-                            case DefaultMessageIDTypes.ID_CONNECTION_ATTEMPT_FAILED:
-                                Console.WriteLine("Connection attempt failed ");
-                                break;
-                            case DefaultMessageIDTypes.ID_NO_FREE_INCOMING_CONNECTIONS:
-                                Console.WriteLine("Server is full ");
-                                break;
-                            case DefaultMessageIDTypes.ID_INVALID_PASSWORD:
-                                Console.WriteLine("ID_INVALID_PASSWORD\n");
-                                break;
-                            case DefaultMessageIDTypes.ID_CONNECTION_LOST:
-                                // Couldn't deliver a reliable packet - i.e. the other system was abnormally
-                                // terminated
-                                Console.WriteLine("ID_CONNECTION_LOST\n");
-                                break;
-                            case DefaultMessageIDTypes.ID_CONNECTION_REQUEST_ACCEPTED:
-                                // This tells the client they have connected
-                                Console.WriteLine("ID_CONNECTION_REQUEST_ACCEPTED to %s " + p.systemAddress.ToString() + "with GUID " + p.guid.ToString());
-                                Console.WriteLine("My external address is:" + client.GetExternalID(p.systemAddress).ToString());
-                                break;
-                            case DefaultMessageIDTypes.ID_CONNECTED_PING:
-                            case DefaultMessageIDTypes.ID_UNCONNECTED_PING:
-                                Console.WriteLine("Ping from " + p.systemAddress.ToString(true));
-                                break;
-                            default:
-                                Console.WriteLine(System.Text.Encoding.UTF8.GetString(p.data));
-                                break;
-
-                        }
-
-                    }
+                    Console.WriteLine(e.Message);
                 }
-
-                client.Shutdown(300);
-                RakNet.RakPeerInterface.DestroyInstance(client);
-                Console.Read();
-            });
-            d.Start();
-        }
-
-        private byte GetPacketIdentifier(Packet p)
-        {
-            if (p == null)
-                return 255;
-            byte buf = p.data[0];
-            if (buf == (char)DefaultMessageIDTypes.ID_TIMESTAMP)
-            {
-                return (byte)p.data[5];
             }
             else
-                return buf;
+            {
+                Finality_Connection();
+                try
+                {
+                    Sock_.Connect(ip, Convert.ToInt32(serverPort));
+                    Th_Rec.Start();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+            }
+        }
+        public void Finality_Connection()
+        {
+            try
+            {
+                Sock_.Disconnect(true);
+                Sock_.Close();
+            }
+            catch
+            {
+
+            }
+            try
+            {
+                Th_Rec.Join();
+            }
+            catch
+            {
+
+            }
         }
 
         internal void Disconnect()
         {
             //throw new NotImplementedException();
-            if (Conn_State())
+            if (State_Connection())
             {
-                client.CloseConnection(RakNet.RakNet.UNASSIGNED_SYSTEM_ADDRESS, true, 0, PacketPriority.HIGH_PRIORITY);
+                Sock_.Disconnect(true);
             }
 
         }
 
-        public bool Conn_State()
+        public Boolean State_Connection()
         {
             try
             {
-                return client.IsActive();
+                return Sock_.Connected;
             }
-            catch (Exception)
+            catch
             {
                 return false;
             }
-
         }
     }
 }
